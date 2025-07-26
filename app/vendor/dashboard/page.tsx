@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -21,65 +23,111 @@ import { Car, Plus, Edit, Calendar, DollarSign, TrendingUp, Users, Settings, Log
 import Link from "next/link"
 
 export default function VendorDashboard() {
-  const [vehicles, setVehicles] = useState([
-    {
-      id: 1,
-      name: "Toyota Camry 2023",
-      type: "Sedan",
-      price: 45,
-      status: "Available",
-      bookings: 12,
-      revenue: 540,
-      rating: 4.8,
-      image: "/placeholder.svg?height=200&width=300",
-    },
-    {
-      id: 2,
-      name: "Honda CR-V 2023",
-      type: "SUV",
-      price: 65,
-      status: "Rented",
-      bookings: 8,
-      revenue: 520,
-      rating: 4.6,
-      image: "/placeholder.svg?height=200&width=300",
-    },
-  ])
-
-  const [bookings] = useState([
-    {
-      id: 1,
-      vehicle: "Toyota Camry 2023",
-      customer: "John Doe",
-      startDate: "2024-01-15",
-      endDate: "2024-01-18",
-      status: "Active",
-      total: 135,
-      phone: "+1234567890",
-    },
-    {
-      id: 2,
-      vehicle: "Honda CR-V 2023",
-      customer: "Jane Smith",
-      startDate: "2024-01-10",
-      endDate: "2024-01-12",
-      status: "Completed",
-      total: 130,
-      phone: "+1234567891",
-    },
-  ])
-
+  const [vehicles, setVehicles] = useState([])
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
   const [newVehicle, setNewVehicle] = useState({
     name: "",
     type: "",
+    brand: "",
+    model: "",
+    year: "",
     price: "",
     description: "",
     features: "",
+    fuelType: "petrol",
+    transmission: "manual",
   })
 
-  const totalRevenue = vehicles.reduce((sum, vehicle) => sum + vehicle.revenue, 0)
-  const totalBookings = vehicles.reduce((sum, vehicle) => sum + vehicle.bookings, 0)
-  const averageRating = vehicles.reduce((sum, vehicle) => sum + vehicle.rating, 0) / vehicles.length
+  const fetchVehicles = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/vehicles", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setVehicles(data.vehicles)
+      }
+    } catch (error) {
+      console.error("Error fetching vehicles:", error)
+    }
+  }
+
+  const fetchBookings = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/bookings", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setBookings(data.bookings)
+      }
+    } catch (error) {
+      console.error("Error fetching bookings:", error)
+    }
+  }
+
+  const handleAddVehicle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/vehicles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...newVehicle,
+          features: newVehicle.features.split(",").map((f) => f.trim()),
+          year: Number.parseInt(newVehicle.year),
+          price: Number.parseFloat(newVehicle.price),
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        alert("Vehicle added successfully!")
+        setNewVehicle({
+          name: "",
+          type: "",
+          brand: "",
+          model: "",
+          year: "",
+          price: "",
+          description: "",
+          features: "",
+          fuelType: "petrol",
+          transmission: "manual",
+        })
+        fetchVehicles()
+      } else {
+        alert(data.message)
+      }
+    } catch (error) {
+      console.error("Error adding vehicle:", error)
+    }
+  }
+
+  useEffect(() => {
+    fetchVehicles()
+    fetchBookings()
+    setLoading(false)
+  }, [])
+
+  const totalRevenue = bookings.reduce((sum: number, booking: any) => sum + booking.totalPrice, 0)
+  const totalBookings = bookings.length
+  const averageRating =
+    vehicles.reduce((sum: number, vehicle: any) => sum + (vehicle.rating || 0), 0) / vehicles.length || 0
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,7 +157,7 @@ export default function VendorDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, Mike!</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h2>
           <p className="text-gray-600">Manage your vehicle fleet and track bookings</p>
         </div>
 
@@ -187,7 +235,7 @@ export default function VendorDashboard() {
                     <DialogTitle>Add New Vehicle</DialogTitle>
                     <DialogDescription>Add a new vehicle to your rental fleet</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
+                  <form onSubmit={handleAddVehicle} className="space-y-4">
                     <div>
                       <Label htmlFor="vehicle-name">Vehicle Name</Label>
                       <Input
@@ -195,7 +243,54 @@ export default function VendorDashboard() {
                         placeholder="e.g., Toyota Camry 2023"
                         value={newVehicle.name}
                         onChange={(e) => setNewVehicle({ ...newVehicle, name: e.target.value })}
+                        required
                       />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="vehicle-brand">Brand</Label>
+                        <Input
+                          id="vehicle-brand"
+                          placeholder="Toyota"
+                          value={newVehicle.brand}
+                          onChange={(e) => setNewVehicle({ ...newVehicle, brand: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="vehicle-model">Model</Label>
+                        <Input
+                          id="vehicle-model"
+                          placeholder="Camry"
+                          value={newVehicle.model}
+                          onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="vehicle-year">Year</Label>
+                        <Input
+                          id="vehicle-year"
+                          type="number"
+                          placeholder="2023"
+                          value={newVehicle.year}
+                          onChange={(e) => setNewVehicle({ ...newVehicle, year: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="vehicle-price">Daily Price ($)</Label>
+                        <Input
+                          id="vehicle-price"
+                          type="number"
+                          placeholder="45"
+                          value={newVehicle.price}
+                          onChange={(e) => setNewVehicle({ ...newVehicle, price: e.target.value })}
+                          required
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="vehicle-type">Type</Label>
@@ -208,18 +303,9 @@ export default function VendorDashboard() {
                           <SelectItem value="suv">SUV</SelectItem>
                           <SelectItem value="hatchback">Hatchback</SelectItem>
                           <SelectItem value="truck">Truck</SelectItem>
+                          <SelectItem value="van">Van</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="vehicle-price">Daily Price ($)</Label>
-                      <Input
-                        id="vehicle-price"
-                        type="number"
-                        placeholder="45"
-                        value={newVehicle.price}
-                        onChange={(e) => setNewVehicle({ ...newVehicle, price: e.target.value })}
-                      />
                     </div>
                     <div>
                       <Label htmlFor="vehicle-description">Description</Label>
@@ -239,18 +325,20 @@ export default function VendorDashboard() {
                         onChange={(e) => setNewVehicle({ ...newVehicle, features: e.target.value })}
                       />
                     </div>
-                    <Button className="w-full">Add Vehicle</Button>
-                  </div>
+                    <Button type="submit" className="w-full">
+                      Add Vehicle
+                    </Button>
+                  </form>
                 </DialogContent>
               </Dialog>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {vehicles.map((vehicle) => (
-                <Card key={vehicle.id}>
+              {vehicles.map((vehicle: any) => (
+                <Card key={vehicle._id}>
                   <div className="aspect-video bg-gray-200">
                     <img
-                      src={vehicle.image || "/placeholder.svg"}
+                      src={vehicle.images?.[0] || "/placeholder.svg?height=200&width=300"}
                       alt={vehicle.name}
                       className="w-full h-full object-cover"
                     />
@@ -261,7 +349,9 @@ export default function VendorDashboard() {
                         <CardTitle className="text-lg">{vehicle.name}</CardTitle>
                         <CardDescription>{vehicle.type}</CardDescription>
                       </div>
-                      <Badge variant={vehicle.status === "Available" ? "default" : "secondary"}>{vehicle.status}</Badge>
+                      <Badge variant={vehicle.available ? "default" : "secondary"}>
+                        {vehicle.available ? "Available" : "Rented"}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -271,18 +361,10 @@ export default function VendorDashboard() {
                         <span className="font-semibold">${vehicle.price}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>Total Bookings:</span>
-                        <span className="font-semibold">{vehicle.bookings}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Revenue:</span>
-                        <span className="font-semibold text-green-600">${vehicle.revenue}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
                         <span>Rating:</span>
                         <span className="flex items-center gap-1">
                           <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                          {vehicle.rating}
+                          {vehicle.rating || 0}
                         </span>
                       </div>
                     </div>
@@ -306,23 +388,24 @@ export default function VendorDashboard() {
           <TabsContent value="bookings" className="space-y-6">
             <h3 className="text-xl font-semibold">Recent Bookings</h3>
             <div className="grid gap-4">
-              {bookings.map((booking) => (
-                <Card key={booking.id}>
+              {bookings.map((booking: any) => (
+                <Card key={booking._id}>
                   <CardContent className="p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-lg">{booking.vehicle}</h4>
-                        <p className="text-gray-600">Customer: {booking.customer}</p>
+                        <h4 className="font-semibold text-lg">{booking.vehicle?.name}</h4>
+                        <p className="text-gray-600">Customer: {booking.user?.name}</p>
                         <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {booking.startDate} to {booking.endDate}
+                            {new Date(booking.startDate).toLocaleDateString()} to{" "}
+                            {new Date(booking.endDate).toLocaleDateString()}
                           </span>
-                          <span className="font-semibold text-green-600">${booking.total}</span>
+                          <span className="font-semibold text-green-600">${booking.totalPrice}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={booking.status === "Active" ? "default" : "secondary"}>{booking.status}</Badge>
+                        <Badge variant={booking.status === "active" ? "default" : "secondary"}>{booking.status}</Badge>
                         <Button size="sm" variant="outline">
                           Contact Customer
                         </Button>
@@ -364,45 +447,23 @@ export default function VendorDashboard() {
                   <div className="space-y-4">
                     <div className="flex justify-between">
                       <span>This Month:</span>
-                      <span className="font-semibold">15 bookings</span>
+                      <span className="font-semibold">
+                        {bookings.filter((b: any) => new Date(b.createdAt).getMonth() === new Date().getMonth()).length}{" "}
+                        bookings
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Last Month:</span>
-                      <span className="font-semibold">12 bookings</span>
+                      <span>Total Revenue:</span>
+                      <span className="font-semibold text-green-600">${totalRevenue}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Growth:</span>
-                      <span className="font-semibold text-green-600">+25%</span>
+                      <span>Average Rating:</span>
+                      <span className="font-semibold">{averageRating.toFixed(1)}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Vehicle Performance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {vehicles.map((vehicle) => (
-                    <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <h4 className="font-semibold">{vehicle.name}</h4>
-                        <p className="text-sm text-gray-600">{vehicle.bookings} bookings</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-600">${vehicle.revenue}</p>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm">{vehicle.rating}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -25,88 +25,115 @@ import {
 import Link from "next/link"
 
 export default function AdminDashboard() {
-  const [users] = useState([
-    { id: 1, name: "John Doe", email: "john@example.com", role: "User", status: "Active", joinDate: "2024-01-15" },
-    { id: 2, name: "Jane Smith", email: "jane@example.com", role: "User", status: "Active", joinDate: "2024-01-10" },
-    {
-      id: 3,
-      name: "Mike Johnson",
-      email: "mike@example.com",
-      role: "Vendor",
-      status: "Active",
-      joinDate: "2024-01-05",
-    },
-  ])
-
-  const [mechanics, setMechanics] = useState([
-    {
-      id: 1,
-      name: "Mike's Auto Repair",
-      owner: "Mike Wilson",
-      email: "mike@autorepair.com",
-      phone: "+1234567890",
-      location: "Downtown Area",
-      services: ["Engine Repair", "Brake Service", "Oil Change"],
-      rating: 4.8,
-      reviews: 156,
-      status: "Approved",
-      joinDate: "2024-01-01",
-    },
-    {
-      id: 2,
-      name: "Rural Fix Station",
-      owner: "Sarah Brown",
-      email: "sarah@ruralfix.com",
-      phone: "+1234567891",
-      location: "Rural Highway 101",
-      services: ["Tire Repair", "Battery Service", "Towing"],
-      rating: 4.5,
-      reviews: 89,
-      status: "Pending",
-      joinDate: "2024-01-20",
-    },
-  ])
-
-  const [reviews] = useState([
-    {
-      id: 1,
-      user: "John Doe",
-      mechanic: "Mike's Auto Repair",
-      rating: 5,
-      comment: "Excellent service! Fixed my car quickly and the price was fair.",
-      date: "2024-01-12",
-      status: "Approved",
-    },
-    {
-      id: 2,
-      user: "Jane Smith",
-      mechanic: "Rural Fix Station",
-      rating: 1,
-      comment: "Terrible service, overcharged me!",
-      date: "2024-01-18",
-      status: "Flagged",
-    },
-  ])
-
-  const [systemStats] = useState({
-    totalUsers: 1250,
-    totalVendors: 45,
-    totalMechanics: 89,
-    totalBookings: 2340,
-    monthlyRevenue: 45600,
-    activeRentals: 156,
+  const [users, setUsers] = useState([])
+  const [mechanics, setMechanics] = useState([])
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [systemStats, setSystemStats] = useState({
+    totalUsers: 0,
+    totalVendors: 0,
+    totalMechanics: 0,
+    totalBookings: 0,
+    monthlyRevenue: 0,
+    activeRentals: 0,
   })
 
-  const approveMechanic = (mechanicId: number) => {
-    setMechanics(
-      mechanics.map((mechanic) => (mechanic.id === mechanicId ? { ...mechanic, status: "Approved" } : mechanic)),
-    )
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/users", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setUsers(data.users)
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error)
+    }
   }
 
-  const rejectMechanic = (mechanicId: number) => {
-    setMechanics(
-      mechanics.map((mechanic) => (mechanic.id === mechanicId ? { ...mechanic, status: "Rejected" } : mechanic)),
-    )
+  const fetchMechanics = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/mechanics", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setMechanics(data.mechanics)
+      }
+    } catch (error) {
+      console.error("Error fetching mechanics:", error)
+    }
+  }
+
+  const fetchReviews = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/admin/reviews", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setReviews(data.reviews)
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error)
+    }
+  }
+
+  const approveMechanic = async (mechanicId: string) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`/api/admin/mechanics/${mechanicId}/approve`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        fetchMechanics()
+      }
+    } catch (error) {
+      console.error("Error approving mechanic:", error)
+    }
+  }
+
+  const rejectMechanic = async (mechanicId: string) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`/api/admin/mechanics/${mechanicId}/reject`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        fetchMechanics()
+      }
+    } catch (error) {
+      console.error("Error rejecting mechanic:", error)
+    }
+  }
+
+  useEffect(() => {
+    fetchUsers()
+    fetchMechanics()
+    fetchReviews()
+    setLoading(false)
+  }, [])
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
 
   return (
@@ -148,7 +175,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600">Total Users</p>
-                  <p className="text-xl font-bold text-blue-600">{systemStats.totalUsers}</p>
+                  <p className="text-xl font-bold text-blue-600">{users.length}</p>
                 </div>
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
@@ -160,7 +187,9 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600">Vendors</p>
-                  <p className="text-xl font-bold text-green-600">{systemStats.totalVendors}</p>
+                  <p className="text-xl font-bold text-green-600">
+                    {users.filter((u: any) => u.role === "vendor").length}
+                  </p>
                 </div>
                 <Car className="h-6 w-6 text-green-600" />
               </div>
@@ -172,7 +201,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-gray-600">Mechanics</p>
-                  <p className="text-xl font-bold text-orange-600">{systemStats.totalMechanics}</p>
+                  <p className="text-xl font-bold text-orange-600">{mechanics.length}</p>
                 </div>
                 <Wrench className="h-6 w-6 text-orange-600" />
               </div>
@@ -183,10 +212,10 @@ export default function AdminDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-gray-600">Total Bookings</p>
-                  <p className="text-xl font-bold text-purple-600">{systemStats.totalBookings}</p>
+                  <p className="text-xs font-medium text-gray-600">Reviews</p>
+                  <p className="text-xl font-bold text-purple-600">{reviews.length}</p>
                 </div>
-                <TrendingUp className="h-6 w-6 text-purple-600" />
+                <Star className="h-6 w-6 text-purple-600" />
               </div>
             </CardContent>
           </Card>
@@ -195,10 +224,12 @@ export default function AdminDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-gray-600">Revenue</p>
-                  <p className="text-xl font-bold text-green-600">${systemStats.monthlyRevenue}</p>
+                  <p className="text-xs font-medium text-gray-600">Pending</p>
+                  <p className="text-xl font-bold text-yellow-600">
+                    {mechanics.filter((m: any) => m.status === "pending").length}
+                  </p>
                 </div>
-                <TrendingUp className="h-6 w-6 text-green-600" />
+                <AlertTriangle className="h-6 w-6 text-yellow-600" />
               </div>
             </CardContent>
           </Card>
@@ -207,10 +238,12 @@ export default function AdminDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-gray-600">Active Rentals</p>
-                  <p className="text-xl font-bold text-blue-600">{systemStats.activeRentals}</p>
+                  <p className="text-xs font-medium text-gray-600">Approved</p>
+                  <p className="text-xl font-bold text-green-600">
+                    {mechanics.filter((m: any) => m.status === "approved").length}
+                  </p>
                 </div>
-                <Car className="h-6 w-6 text-blue-600" />
+                <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
             </CardContent>
           </Card>
@@ -238,18 +271,18 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid gap-4">
-              {mechanics.map((mechanic) => (
-                <Card key={mechanic.id}>
+              {mechanics.map((mechanic: any) => (
+                <Card key={mechanic._id}>
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-lg">{mechanic.name}</h4>
+                          <h4 className="font-semibold text-lg">{mechanic.businessName}</h4>
                           <Badge
                             variant={
-                              mechanic.status === "Approved"
+                              mechanic.status === "approved"
                                 ? "default"
-                                : mechanic.status === "Pending"
+                                : mechanic.status === "pending"
                                   ? "secondary"
                                   : "destructive"
                             }
@@ -260,7 +293,7 @@ export default function AdminDashboard() {
                         <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
                           <div>
                             <p>
-                              <strong>Owner:</strong> {mechanic.owner}
+                              <strong>Owner:</strong> {mechanic.user?.name}
                             </p>
                             <p>
                               <strong>Email:</strong> {mechanic.email}
@@ -271,38 +304,38 @@ export default function AdminDashboard() {
                           </div>
                           <div>
                             <p>
-                              <strong>Location:</strong> {mechanic.location}
+                              <strong>Location:</strong> {mechanic.address}
                             </p>
                             <p>
-                              <strong>Joined:</strong> {mechanic.joinDate}
+                              <strong>Joined:</strong> {new Date(mechanic.createdAt).toLocaleDateString()}
                             </p>
                             <div className="flex items-center gap-1">
                               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                               <span>
-                                {mechanic.rating} ({mechanic.reviews} reviews)
+                                {mechanic.rating} ({mechanic.reviewCount} reviews)
                               </span>
                             </div>
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {mechanic.services.map((service) => (
+                          {mechanic.services?.map((service: string) => (
                             <Badge key={service} variant="outline" className="text-xs">
                               {service}
                             </Badge>
                           ))}
                         </div>
                       </div>
-                      {mechanic.status === "Pending" && (
+                      {mechanic.status === "pending" && (
                         <div className="flex flex-col gap-2">
                           <Button
                             size="sm"
-                            onClick={() => approveMechanic(mechanic.id)}
+                            onClick={() => approveMechanic(mechanic._id)}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Approve
                           </Button>
-                          <Button size="sm" variant="destructive" onClick={() => rejectMechanic(mechanic.id)}>
+                          <Button size="sm" variant="destructive" onClick={() => rejectMechanic(mechanic._id)}>
                             <XCircle className="h-4 w-4 mr-2" />
                             Reject
                           </Button>
@@ -362,8 +395,8 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map((user) => (
-                        <tr key={user.id}>
+                      {users.map((user: any) => (
+                        <tr key={user._id}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium text-gray-900">{user.name}</div>
@@ -374,9 +407,13 @@ export default function AdminDashboard() {
                             <Badge variant="outline">{user.role}</Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={user.status === "Active" ? "default" : "secondary"}>{user.status}</Badge>
+                            <Badge variant={user.isActive ? "default" : "secondary"}>
+                              {user.isActive ? "Active" : "Inactive"}
+                            </Badge>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.joinDate}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex gap-2">
                               <Button size="sm" variant="outline">
@@ -406,21 +443,21 @@ export default function AdminDashboard() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Reviews</SelectItem>
-                  <SelectItem value="flagged">Flagged Reviews</SelectItem>
+                  <SelectItem value="pending">Pending Reviews</SelectItem>
                   <SelectItem value="approved">Approved Reviews</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-4">
-              {reviews.map((review) => (
-                <Card key={review.id}>
+              {reviews.map((review: any) => (
+                <Card key={review._id}>
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h4 className="font-semibold">{review.mechanic}</h4>
+                        <h4 className="font-semibold">{review.mechanic?.businessName}</h4>
                         <p className="text-sm text-gray-600">
-                          Reviewed by {review.user} on {review.date}
+                          Reviewed by {review.user?.name} on {new Date(review.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -434,11 +471,11 @@ export default function AdminDashboard() {
                         </div>
                         <Badge
                           variant={
-                            review.status === "Approved"
+                            review.status === "approved"
                               ? "default"
-                              : review.status === "Flagged"
-                                ? "destructive"
-                                : "secondary"
+                              : review.status === "pending"
+                                ? "secondary"
+                                : "destructive"
                           }
                         >
                           {review.status}
@@ -446,7 +483,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <p className="text-gray-700 mb-4">"{review.comment}"</p>
-                    {review.status === "Flagged" && (
+                    {review.status === "pending" && (
                       <div className="flex gap-2">
                         <Button size="sm" className="bg-green-600 hover:bg-green-700">
                           <CheckCircle className="h-4 w-4 mr-2" />
@@ -454,11 +491,7 @@ export default function AdminDashboard() {
                         </Button>
                         <Button size="sm" variant="destructive">
                           <XCircle className="h-4 w-4 mr-2" />
-                          Remove
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <AlertTriangle className="h-4 w-4 mr-2" />
-                          Investigate
+                          Reject
                         </Button>
                       </div>
                     )}
@@ -497,90 +530,20 @@ export default function AdminDashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between">
-                      <span>Daily Active Users:</span>
-                      <span className="font-semibold">450</span>
+                      <span>Total Users:</span>
+                      <span className="font-semibold">{users.length}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Weekly Active Users:</span>
-                      <span className="font-semibold">1,200</span>
+                      <span>Active Vendors:</span>
+                      <span className="font-semibold">
+                        {users.filter((u: any) => u.role === "vendor" && u.isActive).length}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Monthly Active Users:</span>
-                      <span className="font-semibold">3,500</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>User Retention Rate:</span>
-                      <span className="font-semibold text-green-600">78%</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Top Performing Mechanics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {mechanics
-                      .filter((m) => m.status === "Approved")
-                      .map((mechanic) => (
-                        <div key={mechanic.id} className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-sm">{mechanic.name}</p>
-                            <div className="flex items-center gap-1">
-                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              <span className="text-xs text-gray-600">{mechanic.rating}</span>
-                            </div>
-                          </div>
-                          <span className="text-xs text-gray-500">{mechanic.reviews} reviews</span>
-                        </div>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Regional Distribution</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Urban Areas:</span>
-                      <span className="font-semibold">65%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Rural Areas:</span>
-                      <span className="font-semibold">35%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Coverage Growth:</span>
-                      <span className="font-semibold text-green-600">+12%</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Health</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Server Uptime:</span>
-                      <Badge className="bg-green-100 text-green-800">99.9%</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">API Response Time:</span>
-                      <Badge className="bg-green-100 text-green-800">120ms</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Error Rate:</span>
-                      <Badge className="bg-green-100 text-green-800">0.1%</Badge>
+                      <span>Approved Mechanics:</span>
+                      <span className="font-semibold">
+                        {mechanics.filter((m: any) => m.status === "approved").length}
+                      </span>
                     </div>
                   </div>
                 </CardContent>

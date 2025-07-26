@@ -33,68 +33,10 @@ import Link from "next/link"
 
 export default function UserDashboard() {
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [nearbyMechanics, setNearbyMechanics] = useState([
-    {
-      id: 1,
-      name: "Mike's Auto Repair",
-      rating: 4.8,
-      distance: "2.3 km",
-      phone: "+1234567890",
-      services: ["Engine Repair", "Brake Service", "Oil Change"],
-      available: true,
-      reviews: 156,
-    },
-    {
-      id: 2,
-      name: "Rural Fix Station",
-      rating: 4.5,
-      distance: "5.1 km",
-      phone: "+1234567891",
-      services: ["Tire Repair", "Battery Service", "Towing"],
-      available: true,
-      reviews: 89,
-    },
-  ])
-
-  const [vehicles] = useState([
-    {
-      id: 1,
-      name: "Toyota Camry 2023",
-      type: "Sedan",
-      price: "$45/day",
-      image: "/placeholder.svg?height=200&width=300",
-      available: true,
-      features: ["GPS", "AC", "Bluetooth"],
-    },
-    {
-      id: 2,
-      name: "Honda CR-V 2023",
-      type: "SUV",
-      price: "$65/day",
-      image: "/placeholder.svg?height=200&width=300",
-      available: true,
-      features: ["4WD", "GPS", "AC", "Bluetooth"],
-    },
-  ])
-
-  const [bookings] = useState([
-    {
-      id: 1,
-      vehicle: "Toyota Camry 2023",
-      startDate: "2024-01-15",
-      endDate: "2024-01-18",
-      status: "Active",
-      total: "$135",
-    },
-    {
-      id: 2,
-      vehicle: "Honda CR-V 2023",
-      startDate: "2024-01-10",
-      endDate: "2024-01-12",
-      status: "Completed",
-      total: "$130",
-    },
-  ])
+  const [nearbyMechanics, setNearbyMechanics] = useState([])
+  const [vehicles, setVehicles] = useState([])
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -104,6 +46,7 @@ export default function UserDashboard() {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           })
+          fetchNearbyMechanics(position.coords.latitude, position.coords.longitude)
         },
         (error) => {
           console.error("Error getting location:", error)
@@ -112,9 +55,84 @@ export default function UserDashboard() {
     }
   }
 
+  const fetchVehicles = async () => {
+    try {
+      const response = await fetch("/api/vehicles")
+      const data = await response.json()
+      if (data.success) {
+        setVehicles(data.vehicles)
+      }
+    } catch (error) {
+      console.error("Error fetching vehicles:", error)
+    }
+  }
+
+  const fetchBookings = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/bookings", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setBookings(data.bookings)
+      }
+    } catch (error) {
+      console.error("Error fetching bookings:", error)
+    }
+  }
+
+  const fetchNearbyMechanics = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(`/api/mechanics?lat=${lat}&lng=${lng}&radius=10`)
+      const data = await response.json()
+      if (data.success) {
+        setNearbyMechanics(data.mechanics)
+      }
+    } catch (error) {
+      console.error("Error fetching mechanics:", error)
+    }
+  }
+
+  const handleBookVehicle = async (vehicleId: string, bookingData: any) => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          vehicleId,
+          ...bookingData,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        alert("Booking confirmed!")
+        fetchBookings()
+        fetchVehicles()
+      } else {
+        alert(data.message)
+      }
+    } catch (error) {
+      console.error("Error booking vehicle:", error)
+    }
+  }
+
   useEffect(() => {
     getCurrentLocation()
+    fetchVehicles()
+    fetchBookings()
+    setLoading(false)
   }, [])
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -148,7 +166,7 @@ export default function UserDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, John!</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h2>
           <p className="text-gray-600">Manage your rentals and get emergency support</p>
         </div>
 
@@ -183,11 +201,11 @@ export default function UserDashboard() {
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {vehicles.map((vehicle) => (
-                <Card key={vehicle.id} className="overflow-hidden">
+              {vehicles.map((vehicle: any) => (
+                <Card key={vehicle._id} className="overflow-hidden">
                   <div className="aspect-video bg-gray-200">
                     <img
-                      src={vehicle.image || "/placeholder.svg"}
+                      src={vehicle.images?.[0] || "/placeholder.svg?height=200&width=300"}
                       alt={vehicle.name}
                       className="w-full h-full object-cover"
                     />
@@ -205,14 +223,14 @@ export default function UserDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-1 mb-4">
-                      {vehicle.features.map((feature) => (
+                      {vehicle.features?.map((feature: string) => (
                         <Badge key={feature} variant="outline" className="text-xs">
                           {feature}
                         </Badge>
                       ))}
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-2xl font-bold text-blue-600">{vehicle.price}</span>
+                      <span className="text-2xl font-bold text-blue-600">${vehicle.price}/day</span>
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button disabled={!vehicle.available}>
@@ -224,23 +242,36 @@ export default function UserDashboard() {
                             <DialogTitle>Book {vehicle.name}</DialogTitle>
                             <DialogDescription>Select your rental dates and confirm booking</DialogDescription>
                           </DialogHeader>
-                          <div className="space-y-4">
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault()
+                              const formData = new FormData(e.target as HTMLFormElement)
+                              handleBookVehicle(vehicle._id, {
+                                startDate: formData.get("startDate"),
+                                endDate: formData.get("endDate"),
+                                pickupLocation: formData.get("pickupLocation"),
+                              })
+                            }}
+                            className="space-y-4"
+                          >
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <label className="text-sm font-medium">Start Date</label>
-                                <Input type="date" />
+                                <Input name="startDate" type="date" required />
                               </div>
                               <div>
                                 <label className="text-sm font-medium">End Date</label>
-                                <Input type="date" />
+                                <Input name="endDate" type="date" required />
                               </div>
                             </div>
                             <div>
                               <label className="text-sm font-medium">Pickup Location</label>
-                              <Input placeholder="Enter pickup address" />
+                              <Input name="pickupLocation" placeholder="Enter pickup address" required />
                             </div>
-                            <Button className="w-full">Confirm Booking</Button>
-                          </div>
+                            <Button type="submit" className="w-full">
+                              Confirm Booking
+                            </Button>
+                          </form>
                         </DialogContent>
                       </Dialog>
                     </div>
@@ -253,23 +284,24 @@ export default function UserDashboard() {
           {/* My Bookings */}
           <TabsContent value="bookings" className="space-y-6">
             <div className="grid gap-4">
-              {bookings.map((booking) => (
-                <Card key={booking.id}>
+              {bookings.map((booking: any) => (
+                <Card key={booking._id}>
                   <CardContent className="p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-lg">{booking.vehicle}</h3>
+                        <h3 className="font-semibold text-lg">{booking.vehicle?.name}</h3>
                         <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {booking.startDate} to {booking.endDate}
+                            {new Date(booking.startDate).toLocaleDateString()} to{" "}
+                            {new Date(booking.endDate).toLocaleDateString()}
                           </span>
-                          <span className="font-semibold">{booking.total}</span>
+                          <span className="font-semibold">${booking.totalPrice}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={booking.status === "Active" ? "default" : "secondary"}>{booking.status}</Badge>
-                        {booking.status === "Active" && (
+                        <Badge variant={booking.status === "active" ? "default" : "secondary"}>{booking.status}</Badge>
+                        {booking.status === "active" && (
                           <Button size="sm" variant="outline">
                             Track Vehicle
                           </Button>
@@ -306,17 +338,17 @@ export default function UserDashboard() {
               </CardContent>
             </Card>
 
-            {currentLocation && (
+            {currentLocation && nearbyMechanics.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-xl font-semibold">Nearby Mechanics</h3>
                 <div className="grid gap-4">
-                  {nearbyMechanics.map((mechanic) => (
-                    <Card key={mechanic.id}>
+                  {nearbyMechanics.map((mechanic: any) => (
+                    <Card key={mechanic._id}>
                       <CardContent className="p-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-semibold text-lg">{mechanic.name}</h4>
+                              <h4 className="font-semibold text-lg">{mechanic.businessName}</h4>
                               <Badge variant={mechanic.available ? "default" : "secondary"}>
                                 {mechanic.available ? "Available" : "Busy"}
                               </Badge>
@@ -324,15 +356,15 @@ export default function UserDashboard() {
                             <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
                               <span className="flex items-center gap-1">
                                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                {mechanic.rating} ({mechanic.reviews} reviews)
+                                {mechanic.rating} ({mechanic.reviewCount} reviews)
                               </span>
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-4 w-4" />
-                                {mechanic.distance}
+                                {mechanic.address}
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {mechanic.services.map((service) => (
+                              {mechanic.services?.map((service: string) => (
                                 <Badge key={service} variant="outline" className="text-xs">
                                   {service}
                                 </Badge>
@@ -373,8 +405,11 @@ export default function UserDashboard() {
                       <SelectValue placeholder="Select mechanic to review" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mike">Mike's Auto Repair</SelectItem>
-                      <SelectItem value="rural">Rural Fix Station</SelectItem>
+                      {nearbyMechanics.map((mechanic: any) => (
+                        <SelectItem key={mechanic._id} value={mechanic._id}>
+                          {mechanic.businessName}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -393,27 +428,6 @@ export default function UserDashboard() {
                 <Button>Submit Review</Button>
               </CardContent>
             </Card>
-
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">Your Previous Reviews</h3>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold">Mike's Auto Repair</h4>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star key={star} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-gray-600 text-sm">
-                    "Excellent service! Fixed my car quickly and the price was fair. Highly recommend for anyone
-                    traveling through rural areas."
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">Reviewed on Jan 12, 2024</p>
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
         </Tabs>
       </div>
