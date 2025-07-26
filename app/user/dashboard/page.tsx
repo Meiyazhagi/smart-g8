@@ -1,0 +1,422 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Car,
+  MapPin,
+  Phone,
+  Star,
+  Calendar,
+  AlertTriangle,
+  Navigation,
+  User,
+  Settings,
+  LogOut,
+  Filter,
+} from "lucide-react"
+import Link from "next/link"
+
+export default function UserDashboard() {
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [nearbyMechanics, setNearbyMechanics] = useState([
+    {
+      id: 1,
+      name: "Mike's Auto Repair",
+      rating: 4.8,
+      distance: "2.3 km",
+      phone: "+1234567890",
+      services: ["Engine Repair", "Brake Service", "Oil Change"],
+      available: true,
+      reviews: 156,
+    },
+    {
+      id: 2,
+      name: "Rural Fix Station",
+      rating: 4.5,
+      distance: "5.1 km",
+      phone: "+1234567891",
+      services: ["Tire Repair", "Battery Service", "Towing"],
+      available: true,
+      reviews: 89,
+    },
+  ])
+
+  const [vehicles] = useState([
+    {
+      id: 1,
+      name: "Toyota Camry 2023",
+      type: "Sedan",
+      price: "$45/day",
+      image: "/placeholder.svg?height=200&width=300",
+      available: true,
+      features: ["GPS", "AC", "Bluetooth"],
+    },
+    {
+      id: 2,
+      name: "Honda CR-V 2023",
+      type: "SUV",
+      price: "$65/day",
+      image: "/placeholder.svg?height=200&width=300",
+      available: true,
+      features: ["4WD", "GPS", "AC", "Bluetooth"],
+    },
+  ])
+
+  const [bookings] = useState([
+    {
+      id: 1,
+      vehicle: "Toyota Camry 2023",
+      startDate: "2024-01-15",
+      endDate: "2024-01-18",
+      status: "Active",
+      total: "$135",
+    },
+    {
+      id: 2,
+      vehicle: "Honda CR-V 2023",
+      startDate: "2024-01-10",
+      endDate: "2024-01-12",
+      status: "Completed",
+      total: "$130",
+    },
+  ])
+
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          })
+        },
+        (error) => {
+          console.error("Error getting location:", error)
+        },
+      )
+    }
+  }
+
+  useEffect(() => {
+    getCurrentLocation()
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-2">
+              <Car className="h-8 w-8 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">SmartRental</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="sm">
+                <User className="h-4 w-4 mr-2" />
+                Profile
+              </Button>
+              <Button variant="ghost" size="sm">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+              <Link href="/">
+                <Button variant="ghost" size="sm">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, John!</h2>
+          <p className="text-gray-600">Manage your rentals and get emergency support</p>
+        </div>
+
+        <Tabs defaultValue="vehicles" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="vehicles">Browse Vehicles</TabsTrigger>
+            <TabsTrigger value="bookings">My Bookings</TabsTrigger>
+            <TabsTrigger value="support">Emergency Support</TabsTrigger>
+            <TabsTrigger value="reviews">My Reviews</TabsTrigger>
+          </TabsList>
+
+          {/* Browse Vehicles */}
+          <TabsContent value="vehicles" className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Input placeholder="Search vehicles..." className="w-full" />
+              </div>
+              <Select>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Vehicle Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sedan">Sedan</SelectItem>
+                  <SelectItem value="suv">SUV</SelectItem>
+                  <SelectItem value="hatchback">Hatchback</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline">
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+              </Button>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {vehicles.map((vehicle) => (
+                <Card key={vehicle.id} className="overflow-hidden">
+                  <div className="aspect-video bg-gray-200">
+                    <img
+                      src={vehicle.image || "/placeholder.svg"}
+                      alt={vehicle.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{vehicle.name}</CardTitle>
+                        <CardDescription>{vehicle.type}</CardDescription>
+                      </div>
+                      <Badge variant={vehicle.available ? "default" : "secondary"}>
+                        {vehicle.available ? "Available" : "Booked"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-1 mb-4">
+                      {vehicle.features.map((feature) => (
+                        <Badge key={feature} variant="outline" className="text-xs">
+                          {feature}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-2xl font-bold text-blue-600">{vehicle.price}</span>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button disabled={!vehicle.available}>
+                            {vehicle.available ? "Book Now" : "Unavailable"}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Book {vehicle.name}</DialogTitle>
+                            <DialogDescription>Select your rental dates and confirm booking</DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium">Start Date</label>
+                                <Input type="date" />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">End Date</label>
+                                <Input type="date" />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium">Pickup Location</label>
+                              <Input placeholder="Enter pickup address" />
+                            </div>
+                            <Button className="w-full">Confirm Booking</Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* My Bookings */}
+          <TabsContent value="bookings" className="space-y-6">
+            <div className="grid gap-4">
+              {bookings.map((booking) => (
+                <Card key={booking.id}>
+                  <CardContent className="p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{booking.vehicle}</h3>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {booking.startDate} to {booking.endDate}
+                          </span>
+                          <span className="font-semibold">{booking.total}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={booking.status === "Active" ? "default" : "secondary"}>{booking.status}</Badge>
+                        {booking.status === "Active" && (
+                          <Button size="sm" variant="outline">
+                            Track Vehicle
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Emergency Support */}
+          <TabsContent value="support" className="space-y-6">
+            <Card className="border-red-200 bg-red-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-700">
+                  <AlertTriangle className="h-5 w-5" />
+                  Emergency Support
+                </CardTitle>
+                <CardDescription>Need immediate assistance? Find nearby mechanics and get help fast.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button onClick={getCurrentLocation} className="bg-red-600 hover:bg-red-700">
+                    <Navigation className="h-4 w-4 mr-2" />
+                    Find Nearby Mechanics
+                  </Button>
+                  <Button variant="outline">
+                    <Phone className="h-4 w-4 mr-2" />
+                    Call Emergency Hotline
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {currentLocation && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Nearby Mechanics</h3>
+                <div className="grid gap-4">
+                  {nearbyMechanics.map((mechanic) => (
+                    <Card key={mechanic.id}>
+                      <CardContent className="p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold text-lg">{mechanic.name}</h4>
+                              <Badge variant={mechanic.available ? "default" : "secondary"}>
+                                {mechanic.available ? "Available" : "Busy"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                              <span className="flex items-center gap-1">
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                {mechanic.rating} ({mechanic.reviews} reviews)
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-4 w-4" />
+                                {mechanic.distance}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {mechanic.services.map((service) => (
+                                <Badge key={service} variant="outline" className="text-xs">
+                                  {service}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Button size="sm">
+                              <Phone className="h-4 w-4 mr-2" />
+                              Call Now
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <MapPin className="h-4 w-4 mr-2" />
+                              Get Directions
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* My Reviews */}
+          <TabsContent value="reviews" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Rate Your Recent Service</CardTitle>
+                <CardDescription>Help other users by sharing your experience with mechanics</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Mechanic</label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mechanic to review" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mike">Mike's Auto Repair</SelectItem>
+                      <SelectItem value="rural">Rural Fix Station</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Rating</label>
+                  <div className="flex gap-1 mt-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} className="h-6 w-6 cursor-pointer hover:fill-yellow-400 hover:text-yellow-400" />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Review</label>
+                  <Textarea placeholder="Share your experience..." />
+                </div>
+                <Button>Submit Review</Button>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold">Your Previous Reviews</h3>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-semibold">Mike's Auto Repair</h4>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm">
+                    "Excellent service! Fixed my car quickly and the price was fair. Highly recommend for anyone
+                    traveling through rural areas."
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">Reviewed on Jan 12, 2024</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  )
+}
